@@ -1,0 +1,187 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/advice_for_life_website/nextjs_space/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Order {
+  id                String   @id @default(cuid())
+  email             String
+  amount            Int      // Amount in cents
+  status            String   @default("pending") // pending, completed, failed
+  stripeSessionId   String?  @unique
+  stripePaymentIntentId String?
+  customerName      String?
+  productType       String   @default("pdf") // pdf, hardback, audiobook, bundle
+  shippingAddress   String?  @db.Text // JSON string for physical products
+  
+  // Enhanced customer data collection
+  phone             String?  // Customer phone number
+  acquisitionSource String?  // How they found us: social_media, search, friend, podcast, other
+  companyName       String?  // Optional B2B data
+  birthday          String?  // Optional for promotions (YYYY-MM-DD format)
+  industry          String?  // Optional profession/industry
+  
+  // Lulu Print API integration fields
+  luluPrintJobId    Int?     // Lulu print job ID
+  luluPrintJobStatus String? // UNPAID, CREATED, IN_PRODUCTION, SHIPPED, etc.
+  luluTrackingId    String?  // Shipping tracking number
+  luluTrackingUrl   String?  // Shipping tracking URL
+  trackingEmailSent Boolean  @default(false) // Whether tracking email has been sent
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  downloadLinks     DownloadLink[]
+  
+  @@index([email])
+  @@index([stripeSessionId])
+  @@index([productType])
+  @@index([luluPrintJobId])
+  @@index([acquisitionSource])
+}
+
+model DownloadLink {
+  id        String   @id @default(cuid())
+  token     String   @unique @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  downloads Int      @default(0)
+  maxDownloads Int   @default(3)
+  createdAt DateTime @default(now())
+  
+  @@index([token])
+  @@index([orderId])
+}
+
+model EmailSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("purchase") // purchase, newsletter
+  subscribed Boolean @default(true)
+  createdAt DateTime @default(now())
+  
+  @@index([email])
+}
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String   @db.Text
+  status    String   @default("new") // new, responded, archived
+  createdAt DateTime @default(now())
+  
+  @@index([email])
+  @@index([status])
+}
+
+// NextAuth Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  role          String    @default("user") // user, admin
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  businesses    Business[]
+
+  @@index([email])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// 100 Businesses Tracker
+model Business {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @db.Text
+  launchDate  DateTime
+  websiteLink String?
+  status      String   @default("active") // active, paused, completed
+  category    String?  // Optional category/industry
+  milestone   String?  // Optional milestone/achievement
+  imageUrl    String?  // Optional business logo/image
+  order       Int      @default(autoincrement()) // For display ordering
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([order])
+}
+
+// Business Idea Submissions from Fans
+model BusinessIdea {
+  id                String   @id @default(cuid())
+  submitterName     String
+  submitterEmail    String
+  businessName      String
+  description       String   @db.Text
+  whyItMatters      String   @db.Text
+  status            String   @default("pending") // pending, under_review, selected, rejected
+  equityPercentage  Float?   // If selected, what percentage they receive
+  adminNotes        String?  @db.Text
+  reviewedAt        DateTime?
+  reviewedBy        String?  // Admin user email
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([submitterEmail])
+  @@index([status])
+  @@index([createdAt])
+}
