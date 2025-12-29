@@ -1,24 +1,8 @@
 {
-  "buildCommand": "yarn build",
-  "devCommand": "yarn dev",
-  "installCommand": "yarn install",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "env": {
-    "NEXT_PUBLIC_GA_MEASUREMENT_ID": "@ga-measurement-id"
-  },
-  "build": {
-    "env": {
-      "DATABASE_URL": "@database-url",
-      "NEXTAUTH_SECRET": "@nextauth-secret",
-      "NEXTAUTH_URL": "@nextauth-url",
-      "STRIPE_SECRET_KEY": "@stripe-secret-key",
-      "STRIPE_WEBHOOK_SECRET": "@stripe-webhook-secret",
-      "LULU_API_KEY": "@lulu-api-key",
-      "ACTIVECAMPAIGN_API_KEY": "@activecampaign-api-key",
-      "ACTIVECAMPAIGN_API_URL": "@activecampaign-api-url"
-    }
-  },
+  "buildCommand": "next build",
+  "installCommand": "npm install",
+  "outputDirectory": ".next",
   "headers": [
     {
       "source": "/api/(.*)",
